@@ -1,2 +1,0 @@
-# snowbalko.store
-hi

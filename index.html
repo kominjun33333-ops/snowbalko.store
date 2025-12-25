@@ -1,0 +1,972 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>snowbalko.store</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#f6efe6;--muted:#6f5e54;--accent:#b33a2f;--card:#fff;--ink:#121212}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0;font-family:Inter,system-ui,-apple-system,'Noto Sans KR',sans-serif;background:var(--bg);color:var(--ink);overflow:hidden}
+.app{height:100%;display:flex;align-items:center;justify-content:center;padding:22px}
+.container{width:1200px;max-width:96vw;height:calc(100vh - 44px);display:grid;grid-template-columns:240px 1fr 240px;gap:16px;align-items:stretch}
+.header{grid-column:1/4;display:flex;justify-content:flex-end;align-items:center;margin-bottom:4px}
+.brand{font-size:13px;color:var(--muted);letter-spacing:0.2px}
+.left-panel,.right-panel{position:relative;z-index:5;background:var(--card);border-radius:12px;padding:12px;padding-bottom:2px;box-shadow:0 8px 20px rgba(20,30,40,0.06);overflow:hidden}
+.center-stage{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:0}
+.background-decor{position:relative;width:100%;flex:1;border-radius:12px;background:linear-gradient(180deg,#f7efe6,#efe7db);overflow:visible;display:flex;align-items:flex-start;justify-content:center;padding-top:20px;margin-top:-12px}
+.room{position:absolute;inset:0;pointer-events:none}
+.room svg{position:absolute;inset:0;width:100%;height:100%}
+
+/* Snowglobe */
+.globe-wrap{width:640px;height:740px;display:flex;align-items:center;justify-content:flex-start;flex-direction:column;position:relative;z-index:3;margin-top:-48px}
+.globe-shell{width:580px;height:580px;border-radius:50%;background:radial-gradient(circle at 30% 25%, #ffffff 0%, #edf6ff 28%, #cfe4fb 100%);
+  box-shadow:inset 0 -34px 90px rgba(10,20,40,0.08), 0 22px 44px rgba(10,20,30,0.10);
+  position:relative;display:flex;align-items:center;justify-content:center;z-index:2; transform-style:preserve-3d;}
+canvas#stage{width:540px;height:540px;border-radius:50%;background:transparent}
+.base{position:relative;margin-top:10px;width:380px;height:84px;background:linear-gradient(180deg,#7b4f2e,#4c2f1f);
+  border-radius:16px;display:flex;align-items:center;justify-content:center;font-weight:700;color:#f6efe6;
+  box-shadow:0 12px 28px rgba(10,20,30,0.16);z-index:1;letter-spacing:0.8px}
+
+/* Fireplace */
+.fire-wrap{width:640px;height:740px;display:none;align-items:center;justify-content:flex-start;flex-direction:column;position:relative;z-index:3;margin-top:-48px}
+.fire-frame{width:600px;height:680px;border-radius:18px;background:linear-gradient(180deg,#fff,#f7f1ea);
+  box-shadow:0 22px 44px rgba(10,20,30,0.10);
+  position:relative;display:flex;align-items:center;justify-content:center;z-index:2}
+canvas#fire{width:560px;height:640px;border-radius:14px;background:transparent;margin-top:0}
+
+.panel-title{font-weight:700;margin-bottom:8px}
+.select-grid{display:flex;flex-wrap:wrap;gap:8px}
+.thumb{width:82px;height:82px;border-radius:10px;background:#fff;border:1px solid #efebe6;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:6px;cursor:pointer;user-select:none}
+.thumb.selected{outline:3px solid rgba(179,58,47,0.14)}
+.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap;justify-content:center}
+.btn{background:var(--accent);color:#fff;padding:14px 18px;border-radius:12px;border:0;cursor:pointer;font-weight:700;font-size:15px}
+.btn.blue{background:#2f5fb3}
+.secondary{background:transparent;border:1px solid #eee;padding:8px 10px;border-radius:10px;cursor:pointer}
+.small-muted{font-size:12px;color:var(--muted)}
+.hr{height:1px;background:#f1ece6;margin:8px 0}
+
+.invite-overlay{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;padding:22px;z-index:9997}
+.invite-overlay::before{content:"";position:absolute;inset:0;background:radial-gradient(circle at 30% 20%, rgba(255,255,255,0.85), rgba(246,239,230,1) 55%);}
+.invite-card{position:relative;width:760px;max-width:92vw;background:#fff;border-radius:12px;padding:28px;box-shadow:0 20px 60px rgba(10,20,40,0.12);text-align:left}
+.invite-title{font-size:22px;font-weight:700;margin-bottom:8px}
+.start-btn{display:inline-block;background:var(--accent);color:#fff;padding:12px 18px;border-radius:12px;font-weight:700;cursor:pointer;border:0}
+
+.mode-overlay{position:fixed;inset:0;background:rgba(246,239,230,0.92);backdrop-filter:blur(4px);display:none;pointer-events:none;align-items:center;justify-content:center;padding:28px;z-index:9998}
+.mode-overlay.show{display:flex;pointer-events:auto;}
+.mode-card{width:760px;max-width:92vw;background:#fff;border-radius:14px;padding:20px;box-shadow:0 20px 60px rgba(10,20,40,0.12)}
+.mode-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:12px}
+.mode-btn{border:1px solid #efe7df;background:#fff;border-radius:14px;padding:18px;cursor:pointer;display:flex;gap:12px;align-items:center}
+.mode-btn:hover{box-shadow:0 10px 30px rgba(10,20,30,0.08)}
+.mode-ico{font-size:26px}
+.mode-title{font-weight:700}
+.mode-desc{font-size:12px;color:var(--muted);margin-top:2px}
+
+@keyframes shake{
+  0%{transform:translate3d(0,0,0) rotate(0deg)}
+  15%{transform:translate3d(-6px,2px,0) rotate(-1.2deg)}
+  30%{transform:translate3d(6px,-2px,0) rotate(1.2deg)}
+  45%{transform:translate3d(-5px,-1px,0) rotate(-1deg)}
+  60%{transform:translate3d(5px,1px,0) rotate(1deg)}
+  75%{transform:translate3d(-3px,0,0) rotate(-0.6deg)}
+  100%{transform:translate3d(0,0,0) rotate(0deg)}
+}
+.shaking{animation:shake 420ms ease-in-out}
+
+@media(max-width:1040px){
+  .container{grid-template-columns:1fr; height:calc(100vh - 44px)}
+  .header{grid-column:1/2}
+  .left-panel,.right-panel{display:none}
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="container">
+    <div class="header"><div class="brand">snowbalko.store</div></div>
+
+    <div class="left-panel">
+      <div class="panel-title">메인</div>
+      <div class="small-muted">(여러 개 추가 · 드래그 이동)</div>
+      <div id="mainSelect" class="select-grid" style="margin-top:8px;max-height:260px;overflow-y:auto"></div>
+      <div class="row" style="margin-top:10px;justify-content:flex-start">
+        <button id="addMainBtn" class="secondary">메인 추가</button>
+        <button id="removeSelBtn" class="secondary">선택 삭제</button>
+      </div>
+      <div class="hr"></div>
+      <div class="panel-title">배경</div>
+      <div class="small-muted">(스노우볼 전용 테마)</div>
+      <div style="margin-top:8px" class="select-grid" id="bgQuick">
+        <div class="thumb selected" data-bg="cozy"><div style="font-size:26px">🏠</div><div style="font-size:12px">Cozy</div></div>
+        <div class="thumb" data-bg="tree"><div style="font-size:26px">🎄</div><div style="font-size:12px">Tree</div></div>
+        <div class="thumb" data-bg="fire"><div style="font-size:26px">🔥</div><div style="font-size:12px">Fire</div></div>
+      </div>
+      <div class="hr"></div>
+    </div>
+
+    <div class="center-stage">
+      <div class="background-decor">
+        <div class="room" id="roomBg"></div>
+
+        <!-- Snowglobe -->
+        <div class="globe-wrap" id="globeWrap">
+          <div id="globeShell" class="globe-shell"><canvas id="stage" width="480" height="480"></canvas></div>
+          <div class="base" id="baseLabel">CLASSIC SNOWGLOBE</div>
+          <div class="row" style="margin-top:10px">
+            <button id="toGlobe" class="secondary">❄️ 스노우볼</button>
+            <button id="toFire" class="secondary">🔥 벽난로</button>
+            <span style="width:8px"></span>
+            <button id="shakeBtn" class="btn">🌨️ 흔들기</button>
+            <button id="flipBtn" class="btn blue">🔄 뒤집기</button>
+            <button id="resetBtn" class="secondary">리셋</button>
+          </div>
+        </div>
+
+        <!-- Fireplace -->
+        <div class="fire-wrap" id="fireWrap">
+          <div id="fireFrame" class="fire-frame"><canvas id="fire" width="480" height="640"></canvas></div>
+          <div class="base" id="fireLabel">COZY FIREPLACE</div>
+          <div class="row" style="margin-top:10px">
+            <button id="toGlobeFire" class="secondary">❄️ 스노우볼</button>
+            <button id="toFireFire" class="secondary">🔥 벽난로</button>
+            <span style="width:8px"></span>
+            <button id="stokeBtn" class="btn">🔥 불 살리기</button>
+            <button id="resetFireBtn" class="secondary">리셋</button>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <div class="right-panel">
+      <div class="panel-title">추가 장식</div>
+      <div style="margin-top:8px">
+        <input type="file" id="photoUpload" accept="image/*" style="width:100%" />
+        <div class="small-muted" style="margin-top:4px">사진을 선택하면 바로 스노우볼/벽난로에 추가됩니다</div>
+      </div>
+      <div class="hr"></div>
+      <div class="small-muted">(썰매 · 전구 · 양말 · 양초 · 선물)</div>
+      <div id="decorSelect" class="select-grid" style="margin-top:8px;max-height:210px;overflow-y:auto;margin-bottom:0"></div>
+      <div style="margin-top:6px" class="row">
+        <button id="addDecorBtn" class="secondary">장식 추가</button>
+        <button id="toggleGlassBtn" class="secondary">유리 효과</button>
+      </div>
+      <div class="hr"></div>
+      <div class="panel-title">크기</div>
+      <div class="row" style="justify-content:flex-start">
+        <button class="secondary" data-scale="0.8" id="szS">작게</button>
+        <button class="secondary" data-scale="1.0" id="szM">보통</button>
+        <button class="secondary" data-scale="1.25" id="szL">크게</button>
+      </div>
+      <div class="small-muted" style="margin-top:6px;margin-bottom:0">선택한 오브젝트에 적용</div>
+    </div>
+  </div>
+</div>
+
+<div id="mode" class="mode-overlay" aria-modal="true" role="dialog">
+  <div class="mode-card">
+    <div style="font-weight:700;font-size:18px">무엇을 꾸밀까요?</div>
+    <div class="small-muted">선택 후에도 언제든 바꿀 수 있어요</div>
+    <div class="mode-grid">
+      <div class="mode-btn" id="chooseGlobe"><div class="mode-ico">❄️</div><div><div class="mode-title">스노우볼</div><div class="mode-desc">흔들기·뒤집기·눈과 오브젝트 배치</div></div></div>
+      <div class="mode-btn" id="chooseFire"><div class="mode-ico">🔥</div><div><div class="mode-title">벽난로</div><div class="mode-desc">모닥불 위의 장식·양말·조명 꾸미기</div>
+    
+    <!-- Quick Chat -->
+    <div class="chat-panel" style="position:fixed;right:16px;bottom:16px;width:260px;background:#fff;border-radius:12px;box-shadow:0 12px 30px rgba(0,0,0,.12);overflow:hidden;z-index:9999">
+      <div style="padding:10px 12px;font-weight:700;border-bottom:1px solid #eee">코드 채팅</div>
+      <div style="padding:8px">
+        <input id="chatCode" placeholder="코드 입력" style="width:100%;padding:8px;border-radius:8px;border:1px solid #ddd" />
+      </div>
+      <div id="chatLog" style="height:140px;overflow:auto;padding:8px;font-size:12px;background:#fafafa"></div>
+      <div style="display:flex;gap:6px;padding:8px;border-top:1px solid #eee">
+        <input id="chatMsg" placeholder="채팅" style="flex:1;padding:8px;border-radius:8px;border:1px solid #ddd" />
+        <button id="chatSend" class="secondary">전송</button>
+      </div>
+    </div>
+
+</div>
+</div>
+</div>
+</div>
+</div>
+
+<script>
+const STAGE = 480;
+// 스노우볼 안쪽 '실제 배치/표시' 원을 크게: 불투명 링(여백) 줄이기
+const CX = STAGE/2, CY = STAGE/2, R = 224;
+
+const canvas = document.getElementById('stage');
+const ctx = canvas.getContext('2d');
+
+const fireCanvas = document.getElementById('fire');
+const fctx = fireCanvas.getContext('2d');
+const FIRE_H = fireCanvas.height; // 640 (위로 더 올릴 수 있는 '가시' 캔버스 높이)
+
+const globeWrap = document.getElementById('globeWrap');
+const fireWrap = document.getElementById('fireWrap');
+const globeShell = document.getElementById('globeShell');
+
+const mainSelect = document.getElementById('mainSelect');
+const decorSelect = document.getElementById('decorSelect');
+
+const addMainBtn = document.getElementById('addMainBtn');
+const removeSelBtn = document.getElementById('removeSelBtn');
+const addDecorBtn = document.getElementById('addDecorBtn');
+
+const shakeBtn = document.getElementById('shakeBtn');
+const flipBtn = document.getElementById('flipBtn');
+const resetBtn = document.getElementById('resetBtn');
+
+const stokeBtn = document.getElementById('stokeBtn');
+const resetFireBtn = document.getElementById('resetFireBtn');
+
+const mode = document.getElementById('mode');
+const chooseGlobe = document.getElementById('chooseGlobe');
+const chooseFire = document.getElementById('chooseFire');
+
+const toggleGlassBtn = document.getElementById('toggleGlassBtn');
+const roomBg = document.getElementById('roomBg');
+
+let currentMode = 'globe';
+let glassOn = true;
+
+const DEFAULT_SNOW = { count: 240, speed: 1.0, viscosity: 0.03 };
+let globeTheme = 'cozy';
+
+let state = { objects: [], selectedIdx: -1, flipped:false };
+
+function renderRoom(style='cozy'){
+  const treeOn = (style==='cozy' || style==='tree');
+  const fireOn = (style==='cozy' || style==='fire');
+  const famOn = (style==='cozy');
+  roomBg.innerHTML = `
+  <svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1200 520' preserveAspectRatio='none'>
+    <defs>
+      <linearGradient id='wall' x1='0' y1='0' x2='0' y2='1'>
+        <stop offset='0' stop-color='#f7efe6'/>
+        <stop offset='1' stop-color='#eadfce'/>
+      </linearGradient>
+      <radialGradient id='fireglow' cx='22%' cy='78%' r='60%'>
+        <stop offset='0' stop-color='rgba(255,170,90,0.55)'/>
+        <stop offset='1' stop-color='rgba(255,170,90,0)'/>
+      </radialGradient>
+      <filter id='soft' x='-10%' y='-10%' width='120%' height='120%'>
+        <feGaussianBlur stdDeviation='2.2'/>
+      </filter>
+    </defs>
+    <rect width='1200' height='520' fill='url(#wall)'/>
+    <rect y='360' width='1200' height='160' fill='rgba(120,92,70,0.08)'/>
+
+    ${fireOn ? `
+      <g>
+        <rect x='70' y='290' width='270' height='190' rx='16' fill='rgba(95,60,42,0.22)'/>
+        <rect x='104' y='324' width='202' height='132' rx='16' fill='rgba(40,24,16,0.18)'/>
+        <ellipse cx='205' cy='430' rx='210' ry='85' fill='url(#fireglow)'/>
+        <g filter='url(#soft)'>
+          <path d='M205 340 C172 380 182 416 205 438 C232 412 246 378 214 340 Z' fill='rgba(255,150,70,0.38)'/>
+          <path d='M205 360 C190 388 196 410 205 420 C216 410 224 390 210 360 Z' fill='rgba(255,205,120,0.42)'/>
+        </g>
+      </g>
+    ` : ``}
+
+    ${treeOn ? `
+      <g>
+        <path d='M1040 468 L910 468 L975 260 Z' fill='rgba(20,120,55,0.22)'/>
+        <rect x='962' y='468' width='26' height='40' fill='rgba(85,60,40,0.16)'/>
+        <g filter='url(#soft)'>
+          <circle cx='975' cy='325' r='10' fill='rgba(255,220,160,0.56)'/>
+          <circle cx='948' cy='372' r='10' fill='rgba(255,220,160,0.45)'/>
+          <circle cx='1010' cy='402' r='10' fill='rgba(255,220,160,0.45)'/>
+        </g>
+      </g>
+    ` : ``}
+
+    ${famOn ? `
+      <g filter='url(#soft)'>
+        <ellipse cx='860' cy='430' rx='180' ry='88' fill='rgba(110,85,70,0.12)'/>
+        <circle cx='800' cy='392' r='22' fill='rgba(110,85,70,0.16)'/>
+        <circle cx='860' cy='386' r='24' fill='rgba(110,85,70,0.16)'/>
+        <circle cx='925' cy='400' r='20' fill='rgba(110,85,70,0.14)'/>
+      </g>
+    ` : ``}
+
+    <g opacity='0.30' filter='url(#soft)'>
+      <circle cx='210' cy='90' r='18' fill='rgba(255,230,190,0.55)'/>
+      <circle cx='255' cy='118' r='13' fill='rgba(255,230,190,0.42)'/>
+      <circle cx='980' cy='92' r='18' fill='rgba(255,230,190,0.50)'/>
+      <circle cx='1022' cy='122' r='12' fill='rgba(255,230,190,0.38)'/>
+    </g>
+  </svg>`;
+}
+renderRoom('cozy');
+
+document.getElementById('bgQuick').addEventListener('click', e=>{
+  const t=e.target.closest('.thumb'); if(!t) return;
+  document.querySelectorAll('#bgQuick .thumb').forEach(x=>x.classList.remove('selected'));
+  t.classList.add('selected');
+  globeTheme = t.dataset.bg;
+  renderRoom(t.dataset.bg);
+});
+
+// ===== Upload =====
+const photoUpload = document.getElementById('photoUpload');
+if(photoUpload){
+  photoUpload.addEventListener('change', e=>{
+    const file = e.target.files && e.target.files[0];
+    if(!file) return;
+    const reader = new FileReader();
+    reader.onload = ()=>{
+      const img = new Image();
+      img.onload = ()=>{
+        const id = 'upload_' + Date.now();
+        imgCache[id] = img;
+        let p;
+        if(currentMode==='globe'){
+          p = randomPointInCircle(84);
+          addObject('main', id, p.x, p.y, 1.0, id);
+        }else{
+          const m=24;
+          const x = m + Math.random()*(STAGE-m*2);
+          const y = m + Math.random()*(FIRE_H-m*2);
+          addObject('main', id, x, y, 1.0, id);
+        }
+        photoUpload.value='';
+      };
+      img.src = reader.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+// ===== Assets =====
+const mainAssets = [
+  {id:'frame',label:'사진 액자',svg:`<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 260 220'><g><rect x='54' y='34' width='152' height='152' rx='14' fill='#7b4f2e'/><rect x='68' y='48' width='124' height='124' rx='10' fill='#f6efe6'/><rect x='76' y='56' width='108' height='108' rx='8' fill='rgba(255,255,255,0.85)' stroke='rgba(0,0,0,0.08)'/><rect x='54' y='34' width='152' height='152' rx='14' fill='none' stroke='rgba(255,255,255,0.35)' stroke-width='6'/></g></svg>`},
+  {id:'table',label:'테이블',svg:`<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 260 220'><g><rect x='30' y='120' width='200' height='24' rx='8' fill='#8b5a3c'/><rect x='50' y='144' width='14' height='48' fill='#6f432a'/><rect x='196' y='144' width='14' height='48' fill='#6f432a'/></g></svg>`},
+  {id:'cookies',label:'쿠키·우유',svg:`<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 260 220'><g><defs><linearGradient id='milkFill' x1='0' y1='0' x2='0' y2='1'><stop offset='0' stop-color='rgba(255,255,255,0.85)'/><stop offset='1' stop-color='rgba(255,255,255,0.98)'/></linearGradient></defs><rect x='88' y='88' width='36' height='56' rx='10' fill='rgba(255,255,255,0.15)' stroke='rgba(255,255,255,0.9)' stroke-width='3'/><rect x='92' y='108' width='28' height='32' rx='8' fill='url(#milkFill)'/><rect x='94' y='94' width='6' height='46' rx='3' fill='rgba(255,255,255,0.35)'/><circle cx='172' cy='128' r='22' fill='#c18a5a'/><circle cx='166' cy='122' r='4' fill='#7a4a2b'/><circle cx='178' cy='134' r='4' fill='#7a4a2b'/><circle cx='184' cy='120' r='3' fill='#7a4a2b'/></g></svg>`},
+    {id:'reindeer',label:'루돌프',svg:`<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 260 220'><defs><linearGradient id='fur' x1='0' y1='0' x2='0' y2='1'><stop offset='0' stop-color='#c98b2f'/><stop offset='1' stop-color='#875311'/></linearGradient></defs><g><path d='M78 54 C60 28 64 22 52 14' stroke='#5b3a1a' stroke-width='10' stroke-linecap='round'/><path d='M82 56 C66 44 66 38 64 30' stroke='#5b3a1a' stroke-width='8' stroke-linecap='round'/><path d='M182 54 C200 28 196 22 208 14' stroke='#5b3a1a' stroke-width='10' stroke-linecap='round'/><path d='M178 56 C194 44 194 38 196 30' stroke='#5b3a1a' stroke-width='8' stroke-linecap='round'/><path d='M74 90 C60 64 78 40 108 44 C118 26 142 26 152 44 C182 40 200 64 186 90 C200 104 196 134 174 146 C162 170 140 184 130 186 C120 184 98 170 86 146 C64 134 60 104 74 90 Z' fill='url(#fur)'/><circle cx='108' cy='102' r='11' fill='#fff'/><circle cx='108' cy='102' r='4.6' fill='#1b1b1b'/><circle cx='152' cy='102' r='11' fill='#fff'/><circle cx='152' cy='102' r='4.6' fill='#1b1b1b'/><path d='M108 124 Q130 142 152 124' stroke='rgba(255,255,255,0.62)' stroke-width='10' stroke-linecap='round' fill='none'/><circle cx='130' cy='152' r='22' fill='#e0463b'/><circle cx='124' cy='146' r='8' fill='rgba(255,255,255,0.45)'/><circle cx='130' cy='152' r='34' fill='rgba(224,70,59,0.18)'/></g></svg>`},
+  {id:'santa',label:'산타',svg:`<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 260 220'><g><path d='M64 74 C78 36 110 18 142 26 C174 34 202 60 206 92' fill='#c21f18'/><path d='M80 74 C118 54 162 58 202 92' stroke='#b01812' stroke-width='18' stroke-linecap='round'/><path d='M74 86 C120 70 160 74 206 98' stroke='#ffffff' stroke-width='16' stroke-linecap='round'/><circle cx='214' cy='98' r='14' fill='#fff'/><path d='M70 118 C70 78 98 56 130 56 C170 56 198 82 198 120 C198 158 170 178 130 178 C92 178 70 156 70 118 Z' fill='#f7d1b0'/><path d='M76 132 C92 178 112 196 146 192 C178 188 196 166 206 132' fill='none' stroke='#fff' stroke-width='22' stroke-linecap='round'/><path d='M92 138 C102 170 116 182 132 182 C150 182 166 168 176 138' fill='none' stroke='rgba(255,255,255,0.98)' stroke-width='22' stroke-linecap='round'/><circle cx='112' cy='112' r='7' fill='#1b1b1b'/><circle cx='154' cy='114' r='7' fill='#1b1b1b'/><path d='M96 100 Q112 90 128 98' stroke='rgba(0,0,0,0.14)' stroke-width='10' stroke-linecap='round'/><path d='M140 102 Q156 92 172 102' stroke='rgba(0,0,0,0.14)' stroke-width='10' stroke-linecap='round'/><path d='M110 140 Q130 126 150 140' stroke='#fff' stroke-width='14' stroke-linecap='round' fill='none'/><circle cx='96' cy='134' r='10' fill='rgba(224,70,59,0.14)'/><circle cx='166' cy='136' r='10' fill='rgba(224,70,59,0.14)'/><path d='M86 182 C98 200 164 210 194 188' fill='none' stroke='#d5352a' stroke-width='22' stroke-linecap='round'/><path d='M98 182 C114 196 152 198 180 186' fill='none' stroke='#fff' stroke-width='10' stroke-linecap='round'/></g></svg>`},
+  {id:'snowman',label:'눈사람',svg:`<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 240 220'><g><circle cx='120' cy='142' r='62' fill='#fff'/><circle cx='120' cy='78' r='42' fill='#fff'/><circle cx='104' cy='70' r='6' fill='#1b1b1b'/><circle cx='138' cy='70' r='6' fill='#1b1b1b'/><path d='M118 84 L166 96 L118 98 Z' fill='#e08b2d'/><circle cx='120' cy='128' r='6' fill='#1b1b1b'/><circle cx='120' cy='154' r='6' fill='#1b1b1b'/><circle cx='120' cy='180' r='6' fill='#1b1b1b'/><path d='M82 50 Q120 30 158 50' stroke='#b33a2f' stroke-width='12' stroke-linecap='round'/></g></svg>`},
+  {id:'tree',label:'트리',svg:`<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 240 220'><g><path d='M120 16 L186 104 L160 104 L206 168 L34 168 L80 104 L54 104 Z' fill='#1a8b3a'/><rect x='106' y='168' width='28' height='36' rx='4' fill='#7b4f29'/><polygon points='120,32 130,58 158,58 136,74 144,100 120,84 96,100 104,74 82,58 110,58' fill='#ffd56b'/><circle cx='92' cy='126' r='8' fill='#ffd56b'/><circle cx='150' cy='140' r='8' fill='#ff6b88'/><circle cx='120' cy='152' r='8' fill='#fff'/></g></svg>`},
+  {id:'gift',label:'선물',svg:`<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 240 220'><g><rect x='58' y='98' width='124' height='88' rx='12' fill='#b21f7a'/><rect x='58' y='98' width='124' height='16' fill='#ffd56b'/><rect x='116' y='80' width='12' height='106' fill='#ffd56b'/><path d='M110 88 C92 62 120 56 122 78 C124 56 152 62 134 88' fill='#ffd56b'/></g></svg>`},
+  {id:'wreath',label:'리스',svg:`<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 240 220'><g><circle cx='120' cy='110' r='82' fill='#1b7a32'/><circle cx='120' cy='110' r='44' fill='#f6fbff'/><circle cx='160' cy='98' r='10' fill='#b21f7a'/><circle cx='78' cy='130' r='10' fill='#b21f7a'/><path d='M108 152 Q120 138 132 152' stroke='#b33a2f' stroke-width='10' stroke-linecap='round' fill='none'/></g></svg>`}
+];
+
+const decorAssets = [
+  {id:'sleigh',label:'썰매',svg:`<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 240 220'><g><path d='M42 150 Q120 92 198 150 L198 172 Q120 138 42 172 Z' fill='#7b3b2b'/><path d='M56 178 Q120 208 184 178' fill='none' stroke='#d4b18a' stroke-width='10' stroke-linecap='round'/><path d='M78 144 Q120 120 162 144' fill='none' stroke='rgba(255,255,255,0.12)' stroke-width='10' stroke-linecap='round'/></g></svg>`},
+  {id:'lamp',label:'전구',svg:`<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 240 220'><g><circle cx='120' cy='112' r='24' fill='#ffd56b'/><circle cx='120' cy='112' r='12' fill='rgba(255,255,255,0.65)'/><rect x='112' y='80' width='16' height='14' rx='3' fill='#8a6b4f'/><path d='M92 76 Q120 56 148 76' fill='none' stroke='rgba(60,40,30,0.12)' stroke-width='10' stroke-linecap='round'/></g></svg>`},
+  {id:'stocking',label:'양말',svg:`<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 240 220'><g><path d='M98 52 Q120 40 140 52 V104 Q140 128 124 134 L152 152 Q168 164 156 176 Q140 190 118 176 L92 160 Q78 150 84 134 Q88 120 98 112 Z' fill='#d24a5b'/><path d='M98 52 H140' stroke='#fff' stroke-width='14' stroke-linecap='round'/><circle cx='94' cy='60' r='10' fill='#fff'/><circle cx='94' cy='60' r='6' fill='rgba(0,0,0,0.08)'/><path d='M112 128 Q126 122 136 130' stroke='rgba(255,255,255,0.35)' stroke-width='10' stroke-linecap='round' fill='none'/></g></svg>`},
+  {id:'candle',label:'양초',svg:`<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 240 220'><g><rect x='106' y='86' width='28' height='72' rx='8' fill='#fff8d6'/><rect x='106' y='114' width='28' height='10' fill='rgba(0,0,0,0.06)'/><path d='M120 74 Q114 60 122 50 Q130 60 120 74 Z' fill='#ffb84d'/><circle cx='120' cy='62' r='16' fill='rgba(255,184,77,0.18)'/></g></svg>`},
+  {id:'minigift',label:'작은 선물',svg:`<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 240 220'><g><rect x='86' y='108' width='68' height='56' rx='10' fill='#2f5fb3'/><rect x='86' y='108' width='68' height='14' fill='#ffd56b'/><rect x='118' y='92' width='8' height='72' fill='#ffd56b'/><path d='M114 100 C104 82 120 78 121 92 C122 78 138 82 128 100' fill='#ffd56b'/></g></svg>`}
+];
+
+const fireOnly = [
+  {id:'garland',label:'가랜드',svg:`<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 240 220'><g><path d='M40 92 Q120 26 200 92' fill='none' stroke='#1b7a32' stroke-width='14' stroke-linecap='round'/><circle cx='86' cy='84' r='10' fill='#b33a2f'/><circle cx='120' cy='64' r='10' fill='#ffd56b'/><circle cx='156' cy='84' r='10' fill='#ff6b88'/></g></svg>`},
+  {id:'star',label:'별',svg:`<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 240 220'><polygon points='120,32 134,78 182,78 144,106 160,152 120,124 80,152 96,106 58,78 106,78' fill='#ffd56b'/></svg>`}
+];
+
+const imgCache = {};
+function toDataSvg(svg){ return 'data:image/svg+xml;utf8,'+encodeURIComponent(svg); }
+function cacheAll(list){
+  for(const a of list){
+    const img = new Image();
+    img.onload = ()=> imgCache[a.id]=img;
+    img.onerror = ()=> imgCache[a.id]=null;
+    img.src = toDataSvg(a.svg);
+  }
+}
+cacheAll(mainAssets); cacheAll(decorAssets); cacheAll(fireOnly);
+
+let selectedMain = mainAssets[0].id;
+let selectedDecor = decorAssets[0].id;
+
+function buildGrid(el, list, selectedId){
+  el.innerHTML='';
+  for(const a of list){
+    const d=document.createElement('div');
+    d.className='thumb'+(a.id===selectedId?' selected':'');
+    d.dataset.id=a.id;
+    d.innerHTML = `<div style='width:64px;height:64px'>${a.svg}</div><div style='font-size:12px'>${a.label}</div>`;
+    el.appendChild(d);
+  }
+}
+
+function currentDecorList(){
+  // 스노우볼 / 벽난로 완전히 동일한 추가 장식 목록
+  return decorAssets.concat(fireOnly);
+}
+
+buildGrid(mainSelect, mainAssets, selectedMain);
+buildGrid(decorSelect, currentDecorList(), selectedDecor);
+
+mainSelect.addEventListener('click', e=>{
+  const t=e.target.closest('.thumb'); if(!t) return;
+  selectedMain=t.dataset.id;
+  buildGrid(mainSelect, mainAssets, selectedMain);
+});
+
+decorSelect.addEventListener('click', e=>{
+  const t=e.target.closest('.thumb'); if(!t) return;
+  selectedDecor=t.dataset.id;
+  buildGrid(decorSelect, currentDecorList(), selectedDecor);
+});
+
+function addObject(kind, id, x, y, scale=1.0, imgId=null){
+  const obj={kind,id,imgId,x,y,scale};
+  state.objects.push(obj);
+  state.selectedIdx = state.objects.length-1;
+}
+
+function randomPointInCircle(margin=70){
+  let tries=0, x,y;
+  do{
+    const ang=Math.random()*Math.PI*2;
+    const rr=Math.random()*(R-margin);
+    x=CX+Math.cos(ang)*rr;
+    y=CY+Math.sin(ang)*rr;
+    tries++;
+  }while(y>CY+R-90 && tries<40);
+  return {x,y};
+}
+
+addMainBtn.addEventListener('click', ()=>{
+
+  if(currentMode==='globe'){
+    const p=randomPointInCircle(84);
+    addObject('main', selectedMain, p.x, p.y, 1.0);
+  }else{
+    const m=24;
+    const x = m + Math.random()*(STAGE-m*2);
+    const y = m + Math.random()*(STAGE-m*2);
+    addObject('main', selectedMain, x, y, 1.0);
+  }
+});
+
+addDecorBtn.addEventListener('click', ()=>{
+  if(currentMode==='globe'){
+    const p=randomPointInCircle(84);
+    addObject('decor', selectedDecor, p.x, p.y, 0.95);
+  }else{
+    const m=24;
+    const x = m + Math.random()*(STAGE-m*2);
+    const y = m + Math.random()*(STAGE-m*2);
+    addObject('decor', selectedDecor, x, y, 1.0);
+  }
+});
+
+removeSelBtn.addEventListener('click', ()=>{
+  if(state.selectedIdx<0) return;
+  state.objects.splice(state.selectedIdx,1);
+  state.selectedIdx = Math.min(state.objects.length-1, state.selectedIdx);
+});
+
+function applyScale(mult){
+  const i=state.selectedIdx;
+  if(i<0) return;
+  state.objects[i].scale = Math.max(0.55, Math.min(2.0, state.objects[i].scale * mult));
+}
+
+document.getElementById('szS').addEventListener('click', ()=>applyScale(0.8));
+document.getElementById('szM').addEventListener('click', ()=>applyScale(1.0));
+document.getElementById('szL').addEventListener('click', ()=>applyScale(1.25));
+
+// ===== Snow (finite) =====
+let particles=[];
+const BUCKETS=78;
+let pileBuckets=new Array(BUCKETS).fill(0);
+const PILE_MAX=14;
+
+function initSnow(){
+  particles=[];
+  pileBuckets=new Array(BUCKETS).fill(0);
+  for(let i=0;i<DEFAULT_SNOW.count;i++){
+    const x = CX - R + Math.random()*(R*2);
+    const y = -Math.random()*(R*2) - 30;
+    const baseDrift = (Math.random()-0.5)*0.8;
+    particles.push({x,y,vx:baseDrift,vy:Math.random()*0.55+0.30,size:Math.random()*2.2+1.0,active:true,seed:Math.random()*1000});
+  }
+}
+initSnow();
+
+function reSuspend(ratio=0.6, impulse=10){
+  const target = Math.floor(DEFAULT_SNOW.count*ratio);
+  let activated=0;
+  for(const p of particles){
+    if(!p.active && activated<target){
+      p.active=true;
+      p.y = CY + R - 46 - Math.random()*22;
+      p.vy = -(Math.random()*2.0 + 1.4);
+      p.vx = (Math.random()-0.5)*2.0;
+      activated++;
+    }
+  }
+  for(let i=0;i<BUCKETS;i++) pileBuckets[i]=Math.max(0, pileBuckets[i]-impulse*0.45);
+}
+
+// ===== Dragging =====
+let dragging=null;
+canvas.addEventListener('pointerdown', e=>{
+  const rect=canvas.getBoundingClientRect();
+  const mx=(e.clientX-rect.left);
+  const my=(e.clientY-rect.top);
+  for(let i=state.objects.length-1;i>=0;i--){
+    const o=state.objects[i];
+    const w = (o.kind==='main'?190:120) * o.scale;
+    if(Math.hypot(mx-o.x, my-o.y) < w*0.7){
+      state.selectedIdx=i;
+      dragging={idx:i, ox:mx-o.x, oy:my-o.y};
+      return;
+    }
+  }
+  state.selectedIdx=-1;
+});
+canvas.addEventListener('pointermove', e=>{
+  if(!dragging) return;
+  const rect=canvas.getBoundingClientRect();
+  const mx=(e.clientX-rect.left);
+  const my=(e.clientY-rect.top);
+  const o=state.objects[dragging.idx];
+  if(!o) return;
+  let nx = mx - dragging.ox;
+  let ny = my - dragging.oy;
+  const dx=nx-CX, dy=ny-CY;
+  const dist=Math.hypot(dx,dy);
+  const margin = (o.kind==='main'?96:76);
+  if(dist>R-margin){
+    const a=Math.atan2(dy,dx);
+    nx=CX+Math.cos(a)*(R-margin);
+    ny=CY+Math.sin(a)*(R-margin);
+  }
+  if(ny>CY+R-92) ny=CY+R-92;
+  o.x=nx; o.y=ny;
+});
+canvas.addEventListener('pointerup', ()=> dragging=null);
+
+let fdrag=null;
+fireCanvas.addEventListener('pointerdown', e=>{
+  const rect=fireCanvas.getBoundingClientRect();
+  const mx=(e.clientX-rect.left);
+  const my=(e.clientY-rect.top);
+  for(let i=state.objects.length-1;i>=0;i--){
+    const o=state.objects[i];
+    const w=(o.kind==='main'?190:120)*o.scale;
+    if(Math.hypot(mx-o.x,my-o.y)<w*0.7){
+      state.selectedIdx=i;
+      fdrag={idx:i,ox:mx-o.x,oy:my-o.y};
+      return;
+    }
+  }
+  state.selectedIdx=-1;
+});
+fireCanvas.addEventListener('pointermove', e=>{
+  if(!fdrag) return;
+  const rect=fireCanvas.getBoundingClientRect();
+  const mx=(e.clientX-rect.left);
+  const my=(e.clientY-rect.top);
+  const o=state.objects[fdrag.idx];
+  if(!o) return;
+  let nx=mx-fdrag.ox, ny=my-fdrag.oy;
+  const margin=12;
+  const topMargin = -560; // 위로 7칸 이상 확장
+  nx=Math.max(margin, Math.min(STAGE-margin, nx));
+  ny=Math.max(topMargin, Math.min(FIRE_H-margin, ny));
+  o.x=nx; o.y=ny;
+});
+fireCanvas.addEventListener('pointerup', ()=> fdrag=null);
+
+function clipGlobe(){ ctx.beginPath(); ctx.arc(CX,CY,R,0,Math.PI*2); ctx.clip(); }
+if(!CanvasRenderingContext2D.prototype.roundRect){
+  CanvasRenderingContext2D.prototype.roundRect=function(x,y,w,h,r){
+    if(typeof r==='number') r={tl:r,tr:r,br:r,bl:r};
+    this.beginPath();
+    this.moveTo(x+r.tl,y);
+    this.lineTo(x+w-r.tr,y);
+    this.quadraticCurveTo(x+w,y,x+w,y+r.tr);
+    this.lineTo(x+w,y+h-r.br);
+    this.quadraticCurveTo(x+w,y+h,x+w-r.br,y+h);
+    this.lineTo(x+r.bl,y+h);
+    this.quadraticCurveTo(x,y+h,x,y+h-r.bl);
+    this.lineTo(x,y+r.tl);
+    this.quadraticCurveTo(x,y,x+r.tl,y);
+    this.closePath();
+  };
+}
+
+function drawGlobeBase(){
+  ctx.save();
+  ctx.fillStyle='rgba(76,47,31,1)';
+  ctx.beginPath();
+  ctx.roundRect((STAGE-310)/2, STAGE-60, 310, 64, 14);
+  ctx.fill();
+  ctx.fillStyle='rgba(255,255,255,0.08)';
+  ctx.beginPath();
+  ctx.roundRect((STAGE-284)/2, STAGE-52, 284, 10, 10);
+  ctx.fill();
+  ctx.restore();
+}
+
+function drawPile(){
+  const bw=(R*2)/BUCKETS;
+  ctx.save();
+  ctx.fillStyle='rgba(255,255,255,0.94)';
+  for(let i=0;i<BUCKETS;i++){
+    const h=pileBuckets[i];
+    if(h<=0.12) continue;
+    const x0=CX-R + i*bw;
+    const y0=CY+R-18;
+    const hh=Math.min(18,h);
+    ctx.beginPath();
+    ctx.ellipse(x0+bw/2, y0-hh/2, bw*0.62, hh*0.55, 0, 0, Math.PI*2);
+    ctx.fill();
+  }
+  ctx.restore();
+}
+
+function drawObject(o){
+  const img = o.imgId ? imgCache[o.imgId] : imgCache[o.id];
+  if(!(img && img.complete && img.naturalWidth)) return;
+  const base = (o.kind==='main') ? 180 : 130;
+  const w = base * o.scale;
+
+  ctx.drawImage(img, o.x-w/2, o.y-w/2, w, w);
+}
+
+function drawGlobe(){
+  ctx.clearRect(0,0,STAGE,STAGE);
+  ctx.save();
+  clipGlobe();
+
+  if(globeTheme==='sled'){
+    const g2=ctx.createLinearGradient(0,0,0,STAGE);
+    g2.addColorStop(0,'#e9f6ff');
+    g2.addColorStop(1,'#c7e0f7');
+    ctx.fillStyle=g2; ctx.fillRect(0,0,STAGE,STAGE);
+    ctx.fillStyle='rgba(255,255,255,0.65)';
+    ctx.beginPath(); ctx.ellipse(CX, CY+R*0.45, R*0.9, R*0.25, 0, 0, Math.PI*2); ctx.fill();
+  } else if(globeTheme==='cabin'){
+    const g3=ctx.createLinearGradient(0,0,0,STAGE);
+    g3.addColorStop(0,'#f6f1ea');
+    g3.addColorStop(1,'#e6ddcf');
+    ctx.fillStyle=g3; ctx.fillRect(0,0,STAGE,STAGE);
+    const glow=ctx.createRadialGradient(CX, CY+R*0.35, 20, CX, CY+R*0.35, R);
+    glow.addColorStop(0,'rgba(255,170,90,0.35)'); glow.addColorStop(1,'rgba(255,170,90,0)');
+    ctx.fillStyle=glow; ctx.fillRect(0,0,STAGE,STAGE);
+  } else {
+    const g=ctx.createLinearGradient(0,0,0,STAGE);
+    g.addColorStop(0,'#eef7ff'); g.addColorStop(1,'#cfe4fb');
+    ctx.fillStyle=g; ctx.fillRect(0,0,STAGE,STAGE);
+  }
+
+  const vg=ctx.createRadialGradient(CX,CY,R*0.3,CX,CY,R);
+  vg.addColorStop(0,'rgba(255,255,255,0)');
+  vg.addColorStop(1,'rgba(20,40,70,0.06)');
+  ctx.fillStyle=vg;
+  ctx.fillRect(0,0,STAGE,STAGE);
+
+  drawPile();
+
+  for(let i=0;i<state.objects.length;i++){
+    const o=state.objects[i];
+    if(o.kind!=='main') drawObject(o);
+  }
+  for(const o of state.objects){
+    if(o.kind==='main') drawObject(o);
+  }
+
+  for(const p of particles){
+    if(!p.active) continue;
+    ctx.save();
+    ctx.shadowColor='rgba(255,255,255,0.92)';
+    ctx.shadowBlur=10;
+    ctx.fillStyle='rgba(255,255,255,0.98)';
+    ctx.beginPath();
+    ctx.arc(p.x,p.y,p.size,0,Math.PI*2);
+    ctx.fill();
+    ctx.restore();
+  }
+
+  ctx.restore();
+
+  if(glassOn){
+    ctx.beginPath();
+    ctx.arc(CX,CY,R,0,Math.PI*2);
+    ctx.lineWidth=1.2;
+    ctx.strokeStyle='rgba(255,255,255,0.62)';
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.arc(CX-18,CY-26,R-12, -0.2, 1.25);
+    ctx.lineWidth=2.2;
+    ctx.strokeStyle='rgba(255,255,255,0.18)';
+    ctx.stroke();
+
+    const hz=ctx.createRadialGradient(CX-40,CY-60,20,CX-20,CY-20,R);
+    hz.addColorStop(0,'rgba(255,255,255,0.12)');
+    hz.addColorStop(1,'rgba(255,255,255,0)');
+    ctx.fillStyle=hz;
+    ctx.fillRect(0,0,STAGE,STAGE);
+  }
+
+  drawGlobeBase();
+
+  if(state.selectedIdx>=0){
+    const o=state.objects[state.selectedIdx];
+    if(o){
+      ctx.save();
+      ctx.beginPath();
+      ctx.arc(o.x,o.y, (o.kind==='main'?92:62)*o.scale, 0, Math.PI*2);
+      ctx.strokeStyle='rgba(179,58,47,0.35)';
+      ctx.lineWidth=2;
+      ctx.stroke();
+      ctx.restore();
+    }
+  }
+}
+
+let last=performance.now();
+function updateSnow(){
+  const now=performance.now();
+  const dt=(now-last)/1000;
+  last=now;
+
+  const gravity = state.flipped ? -420 : 420;
+  const visc = DEFAULT_SNOW.viscosity;
+  const speed = DEFAULT_SNOW.speed;
+
+  for(const p of particles){
+    if(!p.active) continue;
+
+    const t = now*0.001;
+    const swirl = Math.sin(t*1.35 + p.seed) * 0.30 + Math.cos(t*0.95 + p.seed*0.7)*0.22;
+    p.vx += swirl * 0.07;
+
+    p.vy += gravity*0.001*dt*speed;
+    p.vx *= (1-visc);
+    p.vy *= (1-visc*0.22);
+
+    p.x += p.vx*dt*60*speed;
+    p.y += p.vy*dt*60*speed;
+
+    const dx=p.x-CX, dy=p.y-CY;
+    const dist=Math.hypot(dx,dy);
+    if(dist>R-6){
+      const ang=Math.atan2(dy,dx);
+      p.x = CX + Math.cos(ang)*(R-6);
+      p.y = CY + Math.sin(ang)*(R-6);
+      p.vx *= -0.12;
+      p.vy *= -0.12;
+    }
+
+    if(!state.flipped && p.y > CY+R-18){
+      const localX=(p.x-(CX-R));
+      const bw=(R*2)/BUCKETS;
+      const idx=Math.max(0,Math.min(BUCKETS-1,Math.floor(localX/bw)));
+      pileBuckets[idx] = Math.min(PILE_MAX, pileBuckets[idx] + p.size*0.22);
+      p.active=false;
+    }
+
+    if(state.flipped && p.y < CY-R-30){
+      p.y = CY-R+12;
+      p.vy = Math.abs(p.vy);
+    }
+  }
+
+  for(let i=0;i<BUCKETS;i++) pileBuckets[i]=Math.max(0, pileBuckets[i]-0.045);
+  for(let i=1;i<BUCKETS-1;i++){
+    const avg=(pileBuckets[i-1]+pileBuckets[i]+pileBuckets[i+1])/3;
+    pileBuckets[i] = pileBuckets[i]*0.92 + avg*0.08;
+  }
+}
+
+function loop(){
+  if(currentMode==='globe'){
+    updateSnow();
+    drawGlobe();
+  }else{
+    drawFireplace();
+  }
+  requestAnimationFrame(loop);
+}
+requestAnimationFrame(()=>{ last=performance.now(); loop(); });
+
+shakeBtn.addEventListener('click', ()=>{
+  globeShell.classList.remove('shaking');
+  void globeShell.offsetWidth;
+  globeShell.classList.add('shaking');
+
+  for(const p of particles){
+    if(p.active){
+      p.vy -= Math.random()*7 + 4;
+      p.vx += (Math.random()-0.5)*5;
+    }
+  }
+  reSuspend(0.58, 10);
+});
+
+let flipT=null;
+function triggerFlip(ms=1200){
+  if(flipT) clearTimeout(flipT);
+  state.flipped=true;
+  for(const p of particles){
+    if(p.active){
+      p.vy = -Math.abs(p.vy) - (Math.random()*2.0);
+      p.vx += (Math.random()-0.5)*1.6;
+    }
+  }
+  reSuspend(0.86, 14);
+  flipT=setTimeout(()=>{ state.flipped=false; flipT=null; }, ms);
+}
+
+flipBtn.addEventListener('click', ()=>{
+  globeShell.style.transition='transform 900ms cubic-bezier(.2,.9,.3,1)';
+  globeShell.style.transform='rotateX(180deg)';
+  triggerFlip(1200);
+  setTimeout(()=>{ globeShell.style.transform='rotateX(0deg)'; },1200);
+});
+
+resetBtn.addEventListener('click', ()=>{
+  state.objects=[];
+  state.selectedIdx=-1;
+  state.flipped=false;
+  initSnow();
+});
+
+toggleGlassBtn.addEventListener('click', ()=>{ glassOn = !glassOn; });
+
+
+
+function setMode(next){
+  currentMode=next;
+  mode.classList.remove('show');
+  if(next==='globe'){
+    globeWrap.style.display='flex';
+    fireWrap.style.display='none';
+  }else{
+    globeWrap.style.display='none';
+    fireWrap.style.display='flex';
+  }
+  selectedDecor = currentDecorList().find(x=>x.id===selectedDecor)?.id || currentDecorList()[0].id;
+  buildGrid(decorSelect, currentDecorList(), selectedDecor);
+}
+chooseGlobe.addEventListener('click', ()=>setMode('globe'));
+chooseFire.addEventListener('click', ()=>setMode('fire'));
+
+const toGlobe=document.getElementById('toGlobe');
+const toFire=document.getElementById('toFire');
+const toGlobeFire=document.getElementById('toGlobeFire');
+const toFireFire=document.getElementById('toFireFire');
+if(toGlobe) toGlobe.addEventListener('click', ()=>setMode('globe'));
+if(toFire) toFire.addEventListener('click', ()=>setMode('fire'));
+if(toGlobeFire) toGlobeFire.addEventListener('click', ()=>setMode('globe'));
+if(toFireFire) toFireFire.addEventListener('click', ()=>setMode('fire'));
+
+// ===== Fireplace drawing =====
+let fireEnergy=0.6;
+let fireTarget=0.6;
+const FIRE_DECAY=0.0016;
+const FIRE_GROW=0.22;
+
+function drawBricks(){
+  const offY = 60; // 벽돌/불 영역만 아래로 내림
+  const bw=36,bh=18;
+  fctx.save();
+  for(let y=84+offY;y<120+offY;y+=bh){
+    for(let x=60;x<420;x+=bw){
+      const off=((Math.floor(y/bh)%2)*bw*0.5);
+      fctx.fillStyle='rgba(170,120,90,0.65)';
+      fctx.fillRect(x+off, y, bw-2, bh-2);
+    }
+  }
+  for(let y=120+offY;y<420+offY;y+=bh){
+    for(let x=40;x<72;x+=bw){
+      fctx.fillStyle='rgba(165,115,85,0.6)';
+      fctx.fillRect(x, y, bw-2, bh-2);
+    }
+    for(let x=408;x<440;x+=bw){
+      fctx.fillStyle='rgba(165,115,85,0.6)';
+      fctx.fillRect(x, y, bw-2, bh-2);
+    }
+  }
+  fctx.restore();
+}
+
+function drawFireplace(){
+  fctx.clearRect(0,0,STAGE,FIRE_H);
+  const g=fctx.createLinearGradient(0,0,0,FIRE_H);
+  g.addColorStop(0,'#fff'); g.addColorStop(1,'#f3ece4');
+  fctx.fillStyle=g; fctx.fillRect(0,0,STAGE,FIRE_H);
+
+  drawBricks();
+
+  fctx.fillStyle='rgba(92,60,40,0.28)';
+  fctx.beginPath(); fctx.roundRect(56,80,368,44,12); fctx.fill();
+
+  const offY = 60;
+  const box={x:48,y:110+offY,w:384,h:320};
+  fctx.fillStyle='rgba(30,18,12,0.34)';
+  fctx.beginPath(); fctx.roundRect(box.x,box.y,box.w,box.h,16); fctx.fill();
+
+  fireTarget=Math.max(0.05, fireTarget - FIRE_DECAY);
+  fireEnergy += (fireTarget-fireEnergy)*0.09;
+
+  // 불빛 중심을 바닥에서 약 5칸 위로 올림
+  const cx=box.x+box.w/2, cy=box.y+box.h-26-90;
+  const rg=fctx.createRadialGradient(cx,cy,10,cx,cy,240);
+  rg.addColorStop(0,`rgba(255,160,80,${0.30+fireEnergy*0.35})`);
+  rg.addColorStop(1,'rgba(255,160,80,0)');
+  fctx.fillStyle=rg; fctx.fillRect(0,0,STAGE,FIRE_H);
+
+  const t=performance.now()*0.002;
+  for(let i=0;i<6;i++){
+    const fx=cx + (i-2.5)*28 + Math.sin(t+i)*10;
+    const h=64 + Math.sin(t*1.2+i)*18 + fireEnergy*42;
+    fctx.beginPath(); fctx.moveTo(fx, cy);
+    fctx.quadraticCurveTo(fx-18, cy-h*0.55, fx, cy-h);
+    fctx.quadraticCurveTo(fx+18, cy-h*0.55, fx, cy); fctx.closePath();
+    fctx.fillStyle='rgba(255,170,90,0.36)'; fctx.fill();
+    fctx.beginPath(); fctx.moveTo(fx, cy);
+    fctx.quadraticCurveTo(fx-10, cy-h*0.45, fx, cy-h*0.78);
+    fctx.quadraticCurveTo(fx+10, cy-h*0.45, fx, cy); fctx.closePath();
+    fctx.fillStyle='rgba(255,220,140,0.30)'; fctx.fill();
+  }
+
+  for(const o of state.objects){
+    const img=o.imgId?imgCache[o.imgId]:imgCache[o.id];
+    if(!(img&&img.complete&&img.naturalWidth)) continue;
+    const base=(o.kind==='main')?200:130; const w=base*o.scale;
+    fctx.drawImage(img,o.x-w/2,o.y-w/2,w,w);
+  }
+}
+
+stokeBtn.addEventListener('click', ()=>{ fireTarget = Math.min(1.0, fireTarget + FIRE_GROW); });
+resetFireBtn.addEventListener('click', ()=>{
+  state.objects=[];
+  state.selectedIdx=-1;
+  fireEnergy=0.6;
+  fireTarget=0.6;
+});
+// ===== Simple local chat (no storage) =====
+const chatLog=document.getElementById('chatLog');
+const chatMsg=document.getElementById('chatMsg');
+const chatSend=document.getElementById('chatSend');
+const chatCode=document.getElementById('chatCode');
+function addChat(text,me=false){
+  const d=document.createElement('div');
+  d.textContent=(me?'나: ':'상대: ')+text;
+  chatLog.appendChild(d);
+  chatLog.scrollTop=chatLog.scrollHeight;
+}
+if(chatSend){
+  chatSend.onclick=()=>{
+    if(!chatMsg.value) return;
+    addChat(chatMsg.value,true);
+    // echo simulation (same code only)
+    if(chatCode.value){
+      setTimeout(()=>addChat(chatMsg.value,false),300);
+    }
+    chatMsg.value='';
+  };
+}
+</script>
+</body>
+</html>
